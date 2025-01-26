@@ -2,6 +2,10 @@ package me.wenlyt.whoFastPlugin;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
@@ -20,6 +24,7 @@ public class WhoFastPlugin extends JavaPlugin implements Listener {
     private final Map<Player, Boolean> completedPlayers = new HashMap<>();
     private int timeRemaining = 3600;
     private BukkitRunnable timerTask;
+    private final Map<Location, Material> originalBlocks = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -32,13 +37,12 @@ public class WhoFastPlugin extends JavaPlugin implements Listener {
         getLogger().info("Plugin Deactivated...");
     }
 
-    // Команда для запуска вызова
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (label.equalsIgnoreCase("whofaststart")) {
             if (sender instanceof Player) {
                 if (!isChallengeActive) {
-                    startChallenge();
+                    startChallenge(((Player) sender).getWorld());
                     return true;
                 } else {
                     sender.sendMessage(ChatColor.BLUE + "Игра уже начата");
@@ -50,12 +54,13 @@ public class WhoFastPlugin extends JavaPlugin implements Listener {
         return false;
     }
 
-    private void startChallenge() {
+    private void startChallenge(org.bukkit.World world) {
         isChallengeActive = true;
         completedPlayers.clear();
         timeRemaining = 3600;
+        saveWorldState(world); // Сохранить мир
         Bukkit.broadcastMessage(ChatColor.GREEN + "Игра началась! Убейте дракона первым!");
-
+        startTimer();
     }
 
     private void startTimer() {
@@ -74,11 +79,11 @@ public class WhoFastPlugin extends JavaPlugin implements Listener {
                 }
 
                 if (timeRemaining <= 300 && timeRemaining % 60 == 0 && timeRemaining > 10) {
-                    Bukkit.broadcastMessage(ChatColor.GRAY + "Осталось" + (timeRemaining / 60) + " минут.");
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "Осталось " + (timeRemaining / 60) + " минут.");
                 }
 
                 if (timeRemaining <= 10) {
-                    Bukkit.broadcastMessage(ChatColor.RED + "Осталось" + timeRemaining + " секунд.");
+                    Bukkit.broadcastMessage(ChatColor.RED + "Осталось " + timeRemaining + " секунд.");
                 }
 
                 timeRemaining--;
@@ -99,11 +104,44 @@ public class WhoFastPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    private void saveWorldState(org.bukkit.World world) {
+        Bukkit.broadcastMessage(ChatColor.YELLOW + "Сохраняем состояние мира...");
+        for (Chunk chunk : world.getLoadedChunks()) {
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int y = 0; y < world.getMaxHeight(); y++) {
+                        Location loc = chunk.getBlock(x, y, z).getLocation();
+                        Block block = loc.getBlock();
+                        if (block.getType() != Material.AIR) {
+                            originalBlocks.put(loc, block.getType());
+                        }
+                    }
+                }
+            }
+        }
+        Bukkit.broadcastMessage(ChatColor.GREEN + "Состояние мира сохранено.");
+    }
+
+    private void restoreWorldState() {
+        Bukkit.broadcastMessage(ChatColor.YELLOW + "Восстанавливаем состояние мира...");
+        for (Map.Entry<Location, Material> entry : originalBlocks.entrySet()) {
+            Location loc = entry.getKey();
+            Material originalMaterial = entry.getValue();
+            Block block = loc.getBlock();
+            if (block.getType() != originalMaterial) {
+                block.setType(originalMaterial);
+            }
+        }
+        originalBlocks.clear();
+        Bukkit.broadcastMessage(ChatColor.GREEN + "Мир восстановлен.");
+    }
+
     private void endChallenge() {
         isChallengeActive = false;
         if (timerTask != null) {
             timerTask.cancel();
         }
         Bukkit.broadcastMessage(ChatColor.GRAY + "Игра закончилась");
+        restoreWorldState();
     }
 }
