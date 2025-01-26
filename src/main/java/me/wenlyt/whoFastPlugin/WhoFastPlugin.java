@@ -58,7 +58,7 @@ public class WhoFastPlugin extends JavaPlugin implements Listener {
         isChallengeActive = true;
         completedPlayers.clear();
         timeRemaining = 3600;
-        saveWorldState(world); // Сохранить мир
+        saveWorldState(world);
         Bukkit.broadcastMessage(ChatColor.GREEN + "Игра началась! Убейте дракона первым!");
         startTimer();
     }
