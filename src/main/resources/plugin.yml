@@ -1,0 +1,8 @@
+name: WhoFastPlugin
+version: '1.0'
+main: me.wenlyt.whoFastPlugin.WhoFastPlugin
+api-version: '1.21'
+
+commands:
+  whofaststart:
+    description: Начать соревнование, кто быстрее сделает.
